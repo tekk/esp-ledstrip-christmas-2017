@@ -6,8 +6,8 @@
             "request": "launch",
             "cwd": "${workspaceRoot}",
             "name": "PlatformIO Debugger",
-            "target": "/Users/admin/Documents/LEDStrip-W2812-detska-Vianoce17/.pioenvs/lolin32/firmware.elf",
-            "gdbpath": "/Users/admin/.platformio/penv/bin/piodebuggdb",
+            "target": "d:/Code-Git/esp-ledstrip-christmas-2017/.pioenvs/lolin32/firmware.elf",
+            "gdbpath": "C:/Users/tekks/.platformio/penv/Scripts/piodebuggdb",
             "autorun": [ "source .pioinit" ]
         }
     ]

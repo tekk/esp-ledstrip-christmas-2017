@@ -15,7 +15,7 @@ Date: 13.12.2017
 #define NUM_LEDS 50
 
 // Data pin that led data will be written out over
-#define DATA_PIN 3
+#define DATA_PIN 12 
 
 // LEDs array
 CRGB leds[NUM_LEDS];
