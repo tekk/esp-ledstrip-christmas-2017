@@ -11,9 +11,9 @@ Date: 13.12.2017
 #include <Arduino.h>
 #include <FastLED.h>
 #if defined(ESP8266)
-#include <ESP8266WiFi.h>          
+#include <ESP8266WiFi.h>
 #else
-#include <WiFi.h>          
+#include <WiFi.h>
 #endif
 
 //needed for library
@@ -25,6 +25,8 @@ Date: 13.12.2017
 #endif
 #include <WiFiManager.h>
 #include <ArduinoOTA.h>
+
+#define EFFECT_DURATION_MS 60 * 1000 // 1min
 
 // How many leds are in the strip?
 #define NUM_LEDS 50
@@ -43,9 +45,10 @@ unsigned char effect = 1;
 
 // maximum frames per second
 const uint16_t MAX_FPS = 60;
+#define UPDATES_PER_SECOND 50
 
 // No. of effects
-const int EFFECTS_COUNT = 1;
+const int EFFECTS_COUNT = 2;
 
 // effects variables
 uint8_t max_bright = 255;
@@ -58,61 +61,153 @@ bool isChangemeSet = false;
 
 WiFiManager wifiManager;
 
+CRGBPalette16 currentPalette;
+TBlendType    currentBlending;
+
+extern CRGBPalette16 myRedWhiteBluePalette;
+extern const TProgmemPalette16 myRedWhiteBluePalette_p PROGMEM;
+
 void rainbow_march() {                                        // The fill_rainbow call doesn't support brightness levels. You would need to change the max_bright value.
   if (thisdir == 0) thishue += thisrot; else thishue -= thisrot;  // I could use signed math, but 'thisdir' works with other routines.
   fill_rainbow(leds, NUM_LEDS, thishue, deltahue);            // I don't change deltahue on the fly as it's too fast near the end of the strip.
 }
 
+void FillLEDsFromPaletteColors( uint8_t colorIndex)
+{
+    uint8_t brightness = 255;
+
+    for( int i = 0; i < NUM_LEDS; i++) {
+        leds[i] = ColorFromPalette( currentPalette, colorIndex, brightness, currentBlending);
+        colorIndex += 3;
+    }
+}
+
+void SetupTotallyRandomPalette()
+{
+    for( int i = 0; i < 16; i++) {
+        currentPalette[i] = CHSV( random8(), 255, random8());
+    }
+}
+
+void SetupBlackAndWhiteStripedPalette()
+{
+    // 'black out' all 16 palette entries...
+    fill_solid( currentPalette, 16, CRGB::Black);
+    // and set every fourth one to white.
+    currentPalette[0] = CRGB::White;
+    currentPalette[4] = CRGB::White;
+    currentPalette[8] = CRGB::White;
+    currentPalette[12] = CRGB::White;
+
+}
+
+void SetupPurpleAndGreenPalette()
+{
+    CRGB purple = CHSV( HUE_PURPLE, 255, 255);
+    CRGB green  = CHSV( HUE_GREEN, 255, 255);
+    CRGB black  = CRGB::Black;
+
+    currentPalette = CRGBPalette16(
+                                   green,  green,  black,  black,
+                                   purple, purple, black,  black,
+                                   green,  green,  black,  black,
+                                   purple, purple, black,  black );
+}
+
+const TProgmemPalette16 myRedWhiteBluePalette_p PROGMEM =
+{
+    CRGB::Red,
+    CRGB::Gray, // 'white' is too bright compared to red and blue
+    CRGB::Blue,
+    CRGB::Black,
+
+    CRGB::Red,
+    CRGB::Gray,
+    CRGB::Blue,
+    CRGB::Black,
+
+    CRGB::Red,
+    CRGB::Red,
+    CRGB::Gray,
+    CRGB::Gray,
+    CRGB::Blue,
+    CRGB::Blue,
+    CRGB::Black,
+    CRGB::Black
+};
+
+void ChangePalettePeriodically()
+{
+    uint8_t secondHand = (millis() / 1000) % 60;
+    static uint8_t lastSecond = 99;
+
+    if( lastSecond != secondHand) {
+        lastSecond = secondHand;
+        if( secondHand ==  0)  { currentPalette = RainbowColors_p;         currentBlending = LINEARBLEND; }
+        if( secondHand == 10)  { currentPalette = RainbowStripeColors_p;   currentBlending = NOBLEND;  }
+        if( secondHand == 15)  { currentPalette = RainbowStripeColors_p;   currentBlending = LINEARBLEND; }
+        if( secondHand == 20)  { SetupPurpleAndGreenPalette();             currentBlending = LINEARBLEND; }
+        if( secondHand == 25)  { SetupTotallyRandomPalette();              currentBlending = LINEARBLEND; }
+        if( secondHand == 30)  { SetupBlackAndWhiteStripedPalette();       currentBlending = NOBLEND; }
+        if( secondHand == 35)  { SetupBlackAndWhiteStripedPalette();       currentBlending = LINEARBLEND; }
+        if( secondHand == 40)  { currentPalette = CloudColors_p;           currentBlending = LINEARBLEND; }
+        if( secondHand == 45)  { currentPalette = PartyColors_p;           currentBlending = LINEARBLEND; }
+        if( secondHand == 50)  { currentPalette = myRedWhiteBluePalette_p; currentBlending = NOBLEND;  }
+        if( secondHand == 55)  { currentPalette = myRedWhiteBluePalette_p; currentBlending = LINEARBLEND; }
+    }
+}
+
 void taskLedStrip(void *parameter)
 {
+  currentPalette = RainbowColors_p;
+  currentBlending = LINEARBLEND;
+
   while (1) {
-    int speedDivider = 100;
     int i = 0;
     uint8_t secondHand;
     static uint8_t lastSecond = 99;
 
-    effect = (millis() / 60000) % 2;
+    effect = (millis() / EFFECT_DURATION_MS) % EFFECTS_COUNT;
 
     switch (effect)
     {
-        case 0:
-            speedDivider = 50;
-            i = (int)round(sin(millis() / 1000.0) * (xTaskGetTickCount() * portTICK_PERIOD_MS / speedDivider)) % NUM_LEDS;
-            leds[i] = CRGB::White;
-            if (i > 0) {
-                leds[i - 1] = CRGB::Black;
-            }
-            FastLED.show();
-            FastLED.delay(50);
-        break;
+      case 0:
+        ChangePalettePeriodically();
 
-        case 1:
-            secondHand = ((xTaskGetTickCount() * portTICK_PERIOD_MS) / 1000) % 60;                // Change '60' to a different value to change length of the loop.
+        static uint8_t startIndex = 0;
+        startIndex++; /* motion speed */
 
-            if (lastSecond != secondHand) {                             // Debounce to make sure we're not repeating an assignment.
-                lastSecond = secondHand;
-                switch(secondHand) {
-                case  0: thisrot=1; deltahue=5; break;
-                case  5: thisdir=-1; deltahue=10; break;
-                case 10: thisrot=5; break;
-                case 15: thisrot=5; thisdir=-1; deltahue=20; break;
-                case 20: deltahue=30; break;
-                case 25: deltahue=2; thisrot=5; break;
-                case 30: break;
-                }
-            }
+        FillLEDsFromPaletteColors(startIndex);
 
-            rainbow_march();
-            FastLED.show();
-            FastLED.delay(thisdelay);
-        break;
+        FastLED.show();
+        FastLED.delay(1000 / UPDATES_PER_SECOND);
+      break;
 
-        default:
-        break;
-      }
+      case 1:
+          secondHand = ((xTaskGetTickCount() * portTICK_PERIOD_MS) / 1000) % 60;                // Change '60' to a different value to change length of the loop.
+
+          if (lastSecond != secondHand) {                             // Debounce to make sure we're not repeating an assignment.
+              lastSecond = secondHand;
+              switch(secondHand) {
+              case  0: thisrot=1; deltahue=5; break;
+              case  5: thisdir=-1; deltahue=10; break;
+              case 10: thisrot=5; break;
+              case 15: thisrot=5; thisdir=-1; deltahue=20; break;
+              case 20: deltahue=30; break;
+              case 25: deltahue=2; thisrot=5; break;
+              case 30: break;
+              }
+          }
+
+          rainbow_march();
+          FastLED.show();
+          FastLED.delay(thisdelay);
+      break;
+
+      default:
+      break;
     }
-
-    //vTaskDelete(NULL);
+  }
 }
 
 void setupWifi() {
