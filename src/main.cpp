@@ -9,7 +9,7 @@ Date: 13.12.2017
 */
 
 #include <Arduino.h>
-#include <FastLED.h>
+#include "../lib/FastLED/FastLED.h"
 #if defined(ESP8266)
 #include <ESP8266WiFi.h>
 #else
