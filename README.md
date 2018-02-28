@@ -1,4 +1,5 @@
 # RGB LED strip decoration - Christmas 2017
+[![Build Status](https://www.travis-ci.org/tekk/esp-ledstrip-christmas-2017.svg?branch=master)](https://www.travis-ci.org/tekk/esp-ledstrip-christmas-2017)
 ## WS2812B LED strip animations using modified FastLED for ESP32. With WiFi Over-The-Air (OTA) firmware upgrades.
 
 ## Demonstration video:
