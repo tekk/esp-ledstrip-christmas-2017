@@ -29,7 +29,13 @@ Project is built with [Arduino for ESP32](https://github.com/espressif/arduino-e
 
 #### TODO
 - Schematic
-- Add picture of the box
+- ~~Add picture of the box~~
+
+![Here's the box](media/wiring0.jpg)
+![Here's a DC connector for +5V](media/wiring1.jpg)
+![Wemos with pin 12 connected as data, power switch](media/wiring2.jpg)
+
+You see that Wemos' pin 12 (A15) is connected as data pin for the strip. There's a switch that unconnects the +5V power from the adapter while the board is powered via USB.
 
 For more info feel free to contact me.
 
